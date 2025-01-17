@@ -8,7 +8,7 @@ import 'package:path/path.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/scaffolding.dart';
 
-final p = path.Context(style: path.Style.posix);
+final p = path.Context();
 
 final assetsDir = Directory("test/assets");
 
@@ -20,26 +20,25 @@ void main() {
     group(testSet.path, () {
       test("works", () async {
         final files = Map.fromEntries(
-          await Future.wait(
-            testSet
-                .listSync(recursive: true)
-                .where((element) => !basename(element.path).startsWith("_"))
-                .whereType<File>()
-                .where((file) => const {
-                      '.graphql',
-                      '.dart',
-                      '.gql',
-                      '.graphqls',
-                      '.expected',
-                      '.json'
-                    }.contains(extension(file.path)))
-                .map(
-                  (file) async => MapEntry(
-                    file.absolute.path.replaceAll(testSet.absolute.path, ""),
-                    await file.readAsString(),
-                  ),
+          await testSet
+              .list(recursive: true)
+              .where((element) => !basename(element.path).startsWith("_"))
+              .expand<File>((element) => element is File ? [element] : const [])
+              .where((file) => const {
+                    '.graphql',
+                    '.dart',
+                    '.gql',
+                    '.graphqls',
+                    '.expected',
+                    '.json'
+                  }.contains(extension(file.path)))
+              .asyncMap(
+                (file) async => MapEntry(
+                  file.absolute.path.replaceAll(testSet.absolute.path, ""),
+                  await file.readAsString(),
                 ),
-          ),
+              )
+              .toList(),
         );
         final builderOptions = files.entries
             .where((element) => element.key.endsWith("builder_options.json"))
